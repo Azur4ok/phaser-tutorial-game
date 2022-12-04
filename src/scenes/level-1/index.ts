@@ -1,6 +1,8 @@
 import { Scene, Tilemaps } from 'phaser'
+import { EVENTS_NAME } from '../../constants'
 import { Player } from './../../classes/Player'
 import { gameObjectsToObjectPoints } from './../../helpers/gameobject-to-object-point'
+import { Enemy } from './../../classes/Enemy'
 
 export class Level1 extends Scene {
   private map!: Tilemaps.Tilemap
@@ -9,6 +11,7 @@ export class Level1 extends Scene {
   private groundLayer!: Tilemaps.TilemapLayer
   private player!: Player
   private chests!: Phaser.GameObjects.Sprite[]
+  enemies!: Enemy[]
   public constructor() {
     super('level-1-scene')
   }
@@ -31,6 +34,7 @@ export class Level1 extends Scene {
     )
     this.chests.forEach((chest) => {
       this.physics.add.overlap(this.player, chest, (obj1, obj2) => {
+        this.game.events.emit(EVENTS_NAME.chestLoot)
         obj2.destroy()
         this.cameras.main.flash()
       })
@@ -43,12 +47,31 @@ export class Level1 extends Scene {
     this.cameras.main.setZoom(2)
   }
 
+  private initEnemies(): void {
+    const enemiesPoints = gameObjectsToObjectPoints(
+      this.map.filterObjects('Enemies', (obj) => obj.name === 'EnemyPoint'),
+    )
+
+    this.enemies = enemiesPoints.map((enemyPoint) =>
+      new Enemy(this, enemyPoint.x, enemyPoint.y, 'tiles_spr', this.player, 503)
+        .setName(enemyPoint.id.toString())
+        .setScale(1.5),
+    )
+
+    this.physics.add.collider(this.enemies, this.wallsLayer)
+    this.physics.add.collider(this.enemies, this.enemies)
+    this.physics.add.collider(this.player, this.enemies, (obj1, obj2) => {
+      (obj1 as Player).getDamage(1)
+    })
+  }
+
   create(): void {
     this.initMap()
     this.player = new Player(this, 100, 100)
     this.physics.add.collider(this.player, this.wallsLayer)
     this.initChests()
     this.initCamera()
+    this.initEnemies()
   }
 
   update(): void {

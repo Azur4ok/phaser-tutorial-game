@@ -1,10 +1,14 @@
+import { EVENTS_NAME, GameStatus } from '../constants'
 import { Actor } from './Actor'
+import { Text } from './Text'
 
 export class Player extends Actor {
   private keyW: Phaser.Input.Keyboard.Key
   private keyA: Phaser.Input.Keyboard.Key
   private keyS: Phaser.Input.Keyboard.Key
   private keyD: Phaser.Input.Keyboard.Key
+  private keySpace: Phaser.Input.Keyboard.Key
+  private hpValue: Text
 
   public constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'king')
@@ -13,11 +17,32 @@ export class Player extends Actor {
     this.keyA = this.scene.input.keyboard.addKey('A')
     this.keyS = this.scene.input.keyboard.addKey('S')
     this.keyD = this.scene.input.keyboard.addKey('D')
+    this.keySpace = this.scene.input.keyboard.addKey(32)
+
+    this.keySpace.on('down', (event: KeyboardEvent) => {
+      this.anims.play('attack', true)
+      this.scene.game.events.emit(EVENTS_NAME.attack)
+    })
+    this.on('destroy', () => {
+      this.keySpace.removeAllListeners()
+    })
+
+    this.hpValue = new Text(this.scene, this.x, this.y - this.height, this.hp.toString())
+      .setFontSize(12)
+      .setOrigin(0.8, 0.5)
 
     this.getBody().setSize(30, 30)
     this.getBody().setOffset(8, 0)
 
     this.initAnimations()
+  }
+
+  public getDamage(value?: number): void {
+    super.getDamage(value)
+    this.hpValue.setText(this.hp.toString())
+    if (this.hp <= 0) {
+      this.scene.game.events.emit(EVENTS_NAME.gameEnd, GameStatus.LOSE)
+    }
   }
 
   private initAnimations(): void {
@@ -62,5 +87,7 @@ export class Player extends Actor {
       this.getBody().setOffset(15, 15)
       !this.anims.isPlaying && this.anims.play('run', true)
     }
+    this.hpValue.setPosition(this.x, this.y - this.height * 0.4)
+    this.hpValue.setOrigin(0.8, 0.5)
   }
 }
